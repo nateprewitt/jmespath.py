@@ -27,14 +27,11 @@ A few notes on the implementation.
 """
 import random
 
-from jmespath import lexer
+from jmespath import ast, exceptions, lexer, visitor
 from jmespath.compat import with_repr_method
-from jmespath import ast
-from jmespath import exceptions
-from jmespath import visitor
 
 
-class Parser(object):
+class Parser:
     BINDING_POWER = {
         'eof': 0,
         'unquoted_identifier': 0,
@@ -111,16 +108,20 @@ class Parser(object):
         parsed = self._expression(binding_power=0)
         if not self._current_token() == 'eof':
             t = self._lookahead_token(0)
-            raise exceptions.ParseError(t['start'], t['value'], t['type'],
-                                        "Unexpected token: %s" % t['value'])
+            raise exceptions.ParseError(
+                t['start'],
+                t['value'],
+                t['type'],
+                "Unexpected token: %s" % t['value'],
+            )
         return ParsedResult(expression, parsed)
 
     def _expression(self, binding_power=0):
         left_token = self._lookahead_token(0)
         self._advance()
         nud_function = getattr(
-            self, '_token_nud_%s' % left_token['type'],
-            self._error_nud_token)
+            self, '_token_nud_%s' % left_token['type'], self._error_nud_token
+        )
         left = nud_function(left_token)
         current_token = self._current_token()
         while binding_power < self.BINDING_POWER[current_token]:
@@ -147,8 +148,11 @@ class Parser(object):
         if self._current_token() == 'lparen':
             t = self._lookahead_token(0)
             raise exceptions.ParseError(
-                0, t['value'], t['type'],
-                'Quoted identifier not allowed for function names.')
+                0,
+                t['value'],
+                t['type'],
+                'Quoted identifier not allowed for function names.',
+            )
         return field
 
     def _token_nud_star(self, token):
@@ -172,8 +176,7 @@ class Parser(object):
 
     def _token_nud_flatten(self, token):
         left = ast.flatten(ast.identity())
-        right = self._parse_projection_rhs(
-            self.BINDING_POWER['flatten'])
+        right = self._parse_projection_rhs(self.BINDING_POWER['flatten'])
         return ast.projection(left, right)
 
     def _token_nud_not(self, token):
@@ -188,8 +191,10 @@ class Parser(object):
             # just use emit an index node here if we're not dealing
             # with a slice.
             return self._project_if_slice(ast.identity(), right)
-        elif self._current_token() == 'star' and \
-                self._lookahead(1) == 'rbracket':
+        elif (
+            self._current_token() == 'star'
+            and self._lookahead(1) == 'rbracket'
+        ):
             self._advance()
             self._advance()
             right = self._parse_projection_rhs(self.BINDING_POWER['star'])
@@ -202,8 +207,7 @@ class Parser(object):
         # [<current>
         #  ^
         #  | current token
-        if (self._lookahead(0) == 'colon' or
-                self._lookahead(1) == 'colon'):
+        if self._lookahead(0) == 'colon' or self._lookahead(1) == 'colon':
             return self._parse_slice_expression()
         else:
             # Parse the syntax [number]
@@ -224,14 +228,16 @@ class Parser(object):
                 index += 1
                 if index == 3:
                     self._raise_parse_error_for_token(
-                        self._lookahead_token(0), 'syntax error')
+                        self._lookahead_token(0), 'syntax error'
+                    )
                 self._advance()
             elif current_token == 'number':
                 parts[index] = self._lookahead_token(0)['value']
                 self._advance()
             else:
                 self._raise_parse_error_for_token(
-                    self._lookahead_token(0), 'syntax error')
+                    self._lookahead_token(0), 'syntax error'
+                )
             current_token = self._current_token()
         self._match('rbracket')
         return ast.slice(*parts)
@@ -254,8 +260,7 @@ class Parser(object):
         else:
             # We're creating a projection.
             self._advance()
-            right = self._parse_projection_rhs(
-                self.BINDING_POWER['dot'])
+            right = self._parse_projection_rhs(self.BINDING_POWER['dot'])
             return ast.value_projection(left, right)
 
     def _token_led_pipe(self, left):
@@ -277,8 +282,11 @@ class Parser(object):
             # -2 - invalid function "name".
             prev_t = self._lookahead_token(-2)
             raise exceptions.ParseError(
-                prev_t['start'], prev_t['value'], prev_t['type'],
-                "Invalid function name '%s'" % prev_t['value'])
+                prev_t['start'],
+                prev_t['value'],
+                prev_t['type'],
+                "Invalid function name '%s'" % prev_t['value'],
+            )
         name = left['value']
         args = []
         while not self._current_token() == 'rparen':
@@ -320,8 +328,7 @@ class Parser(object):
 
     def _token_led_flatten(self, left):
         left = ast.flatten(left)
-        right = self._parse_projection_rhs(
-            self.BINDING_POWER['flatten'])
+        right = self._parse_projection_rhs(self.BINDING_POWER['flatten'])
         return ast.projection(left, right)
 
     def _token_led_lbracket(self, left):
@@ -348,7 +355,8 @@ class Parser(object):
         if right['type'] == 'slice':
             return ast.projection(
                 index_expr,
-                self._parse_projection_rhs(self.BINDING_POWER['star']))
+                self._parse_projection_rhs(self.BINDING_POWER['star']),
+            )
         else:
             return index_expr
 
@@ -375,7 +383,8 @@ class Parser(object):
             # Before getting the token value, verify it's
             # an identifier.
             self._match_multiple_tokens(
-                token_types=['quoted_identifier', 'unquoted_identifier'])
+                token_types=['quoted_identifier', 'unquoted_identifier']
+            )
             key_name = key_token['value']
             self._match('colon')
             value = self._expression(0)
@@ -401,8 +410,9 @@ class Parser(object):
             self._match('dot')
             right = self._parse_dot_rhs(binding_power)
         else:
-            self._raise_parse_error_for_token(self._lookahead_token(0),
-                                              'syntax error')
+            self._raise_parse_error_for_token(
+                self._lookahead_token(0), 'syntax error'
+            )
         return right
 
     def _parse_dot_rhs(self, binding_power):
@@ -426,17 +436,20 @@ class Parser(object):
             return self._parse_multi_select_hash()
         else:
             t = self._lookahead_token(0)
-            allowed = ['quoted_identifier', 'unquoted_identifier',
-                       'lbracket', 'lbrace']
-            msg = (
-                "Expecting: %s, got: %s" % (allowed, t['type'])
-            )
+            allowed = [
+                'quoted_identifier',
+                'unquoted_identifier',
+                'lbracket',
+                'lbrace',
+            ]
+            msg = "Expecting: {}, got: {}".format(allowed, t['type'])
             self._raise_parse_error_for_token(t, msg)
 
     def _error_nud_token(self, token):
         if token['type'] == 'eof':
             raise exceptions.IncompleteExpressionError(
-                token['start'], token['value'], token['type'])
+                token['start'], token['value'], token['type']
+            )
         self._raise_parse_error_for_token(token, 'invalid token')
 
     def _error_led_token(self, token):
@@ -449,12 +462,14 @@ class Parser(object):
             self._advance()
         else:
             self._raise_parse_error_maybe_eof(
-                token_type, self._lookahead_token(0))
+                token_type, self._lookahead_token(0)
+            )
 
     def _match_multiple_tokens(self, token_types):
         if self._current_token() not in token_types:
             self._raise_parse_error_maybe_eof(
-                token_types, self._lookahead_token(0))
+                token_types, self._lookahead_token(0)
+            )
         self._advance()
 
     def _advance(self):
@@ -473,8 +488,9 @@ class Parser(object):
         lex_position = token['start']
         actual_value = token['value']
         actual_type = token['type']
-        raise exceptions.ParseError(lex_position, actual_value,
-                                    actual_type, reason)
+        raise exceptions.ParseError(
+            lex_position, actual_value, actual_type, reason
+        )
 
     def _raise_parse_error_maybe_eof(self, expected_type, token):
         lex_position = token['start']
@@ -482,11 +498,12 @@ class Parser(object):
         actual_type = token['type']
         if actual_type == 'eof':
             raise exceptions.IncompleteExpressionError(
-                lex_position, actual_value, actual_type)
-        message = 'Expecting: %s, got: %s' % (expected_type,
-                                              actual_type)
+                lex_position, actual_value, actual_type
+            )
+        message = 'Expecting: {}, got: {}'.format(expected_type, actual_type)
         raise exceptions.ParseError(
-            lex_position, actual_value, actual_type, message)
+            lex_position, actual_value, actual_type, message
+        )
 
     def _free_cache_entries(self):
         for key in random.sample(self._CACHE.keys(), int(self._MAX_SIZE / 2)):
@@ -499,7 +516,7 @@ class Parser(object):
 
 
 @with_repr_method
-class ParsedResult(object):
+class ParsedResult:
     def __init__(self, expression, parsed):
         self.expression = expression
         self.parsed = parsed

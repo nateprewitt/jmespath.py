@@ -47,13 +47,12 @@ Run the filter and function tests in group 1::
 
 """
 
-import sys
 import argparse
-import os
-import subprocess
 import json
+import os
 import shlex
-
+import subprocess
+import sys
 
 if sys.version_info[:2] == (2, 6):
     import simplejson as json
@@ -70,11 +69,11 @@ _splitext = os.path.splitext
 _bname = os.path.basename
 
 
-class ComplianceTestRunner(object):
+class ComplianceTestRunner:
     TEST_DIR = _pjoin(_dname(_dname(_abs(__file__))), 'tests', 'compliance')
 
     def __init__(self, exe=None, tests=None, test_dir=TEST_DIR):
-        self.test_dir=  test_dir
+        self.test_dir = test_dir
         self.tests = tests
         self.jp_executable = exe
 
@@ -108,9 +107,12 @@ class ComplianceTestRunner(object):
     def _load_test_cases(self, filename, group_number, test_group):
         given = test_group['given']
         for i, case in enumerate(test_group['cases']):
-            current = {"given": given, "group_number": group_number,
-                       "test_number": i,
-                       'category': _splitext(_bname(filename))[0]}
+            current = {
+                "given": given,
+                "group_number": group_number,
+                "test_number": i,
+                'category': _splitext(_bname(filename))[0],
+            }
             current.update(case)
             yield current
 
@@ -118,16 +120,20 @@ class ComplianceTestRunner(object):
         for test_json_file in self.get_compliance_test_files():
             test_groups = self._load_test_file(test_json_file)
             for i, test_group in enumerate(test_groups):
-                test_cases = self._load_test_cases(test_json_file, i, test_group)
-                for test_case in test_cases:
-                    yield test_case
+                test_cases = self._load_test_cases(
+                    test_json_file, i, test_group
+                )
+                yield from test_cases
 
     def _run_test(self, test_case):
         command = shlex.split(self.jp_executable)
         command.append(test_case['expression'])
-        process = subprocess.Popen(command, stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE,
-                                   stdin=subprocess.PIPE)
+        process = subprocess.Popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            stdin=subprocess.PIPE,
+        )
         process.stdin.write(json.dumps(test_case['given']))
         process.stdin.flush()
         stdout, stderr = process.communicate()
@@ -200,15 +206,29 @@ def test_spec(value):
 def main():
     parser = argparse.ArgumentParser(usage=__doc__)
     parser.add_argument('-e', '--exe', help='The JMESPath executable to use.')
-    parser.add_argument('-t', '--tests', help=('The compliance tests to run.  '
-                                              'If this value is not provided, '
-                                              'then all compliance tests are '
-                                              'run.'), type=test_spec, nargs='+')
-    parser.add_argument('-l', '--list', action="store_true",
-                        help=('List the available compliance tests to run.  '
-                              'These values can then be used with the '
-                              '"-t/--tests" argument.  If this argument is '
-                              'specified, no tests will actually be run.'))
+    parser.add_argument(
+        '-t',
+        '--tests',
+        help=(
+            'The compliance tests to run.  '
+            'If this value is not provided, '
+            'then all compliance tests are '
+            'run.'
+        ),
+        type=test_spec,
+        nargs='+',
+    )
+    parser.add_argument(
+        '-l',
+        '--list',
+        action="store_true",
+        help=(
+            'List the available compliance tests to run.  '
+            'These values can then be used with the '
+            '"-t/--tests" argument.  If this argument is '
+            'specified, no tests will actually be run.'
+        ),
+    )
     args = parser.parse_args()
     runner = ComplianceTestRunner(args.exe, args.tests)
     if args.list:

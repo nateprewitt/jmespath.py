@@ -7,24 +7,24 @@ over time.  The test files are data driven similar to the
 compliance tests.
 """
 import argparse
-import time
-import os
 import json
+import os
 import sys
+import time
 import timeit
 
 _clock = timeit.default_timer
 
 
-from jmespath.parser import Parser
 from jmespath.lexer import Lexer
-
+from jmespath.parser import Parser
 
 BENCHMARK_FILE = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     'tests',
     'compliance',
-    'benchmarks.json')
+    'benchmarks.json',
+)
 APPROX_RUN_TIME = 0.5
 
 
@@ -45,10 +45,14 @@ def run_tests(tests):
             combined_time = 0
         sys.stdout.write(
             "lex_time: %10.5fus, parse_time: %10.5fus, search_time: %10.5fus "
-            "combined_time: %10.5fus " % (1000000 * lex_time,
-                                          1000000 * parse_time,
-                                          1000000 * search_time,
-                                          1000000 * combined_time))
+            "combined_time: %10.5fus "
+            % (
+                1000000 * lex_time,
+                1000000 * parse_time,
+                1000000 * search_time,
+                1000000 * combined_time,
+            )
+        )
         sys.stdout.write("name: %s\n" % test['name'])
 
 
@@ -71,7 +75,7 @@ def _lex_time(expression, clock=_clock):
 def _search_time(expression, given, clock=_clock):
     p = Parser()
     parsed = p.parse(expression)
-    duration =  0
+    duration = 0
     i = 0
     while True:
         i += 1
@@ -116,8 +120,10 @@ def _combined_time(expression, given, result, clock=_clock):
         end = clock()
         total = end - start
         if r != result:
-            raise RuntimeError("Unexpected result, received: %s, "
-                               "expected: %s" % (r, result))
+            raise RuntimeError(
+                "Unexpected result, received: %s, "
+                "expected: %s" % (r, result)
+            )
         duration += total
         if duration >= APPROX_RUN_TIME:
             break
@@ -130,7 +136,7 @@ def load_tests(filename):
         data = json.load(f)
     if isinstance(data, list):
         for i, d in enumerate(data):
-            _add_cases(d, loaded, '%s-%s' % (filename, i))
+            _add_cases(d, loaded, f'{filename}-{i}')
     else:
         _add_cases(data, loaded, filename)
     return loaded

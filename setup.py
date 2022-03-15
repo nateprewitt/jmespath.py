@@ -2,14 +2,13 @@
 
 import io
 
-from setuptools import setup, find_packages
-
+from setuptools import find_packages, setup
 
 setup(
     name='jmespath',
     version='1.0.0',
     description='JSON Matching Expressions',
-    long_description=io.open('README.rst', encoding='utf-8').read(),
+    long_description=open('README.rst', encoding='utf-8').read(),
     author='James Saryerwinnie',
     author_email='js@jamesls.com',
     url='https://github.com/jmespath/jmespath.py',

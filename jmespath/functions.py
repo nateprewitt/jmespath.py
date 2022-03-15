@@ -1,10 +1,9 @@
-import math
 import json
+import math
 
 from jmespath import exceptions
-from jmespath.compat import string_type as STRING_TYPE
 from jmespath.compat import get_methods
-
+from jmespath.compat import string_type as STRING_TYPE
 
 # python types -> jmespath types
 TYPES_MAP = {
@@ -27,7 +26,10 @@ TYPES_MAP = {
 REVERSE_TYPES_MAP = {
     'boolean': ('bool',),
     'array': ('list', '_Projection'),
-    'object': ('dict', 'OrderedDict',),
+    'object': (
+        'dict',
+        'OrderedDict',
+    ),
     'null': ('NoneType',),
     'string': ('unicode', 'str'),
     'number': ('float', 'int', 'long'),
@@ -39,13 +41,14 @@ def signature(*arguments):
     def _record_signature(func):
         func.signature = arguments
         return func
+
     return _record_signature
 
 
 class FunctionRegistry(type):
     def __init__(cls, name, bases, attrs):
         cls._populate_function_table()
-        super(FunctionRegistry, cls).__init__(name, bases, attrs)
+        super().__init__(name, bases, attrs)
 
     def _populate_function_table(cls):
         function_table = {}
@@ -66,15 +69,15 @@ class FunctionRegistry(type):
 
 class Functions(metaclass=FunctionRegistry):
 
-    FUNCTION_TABLE = {
-    }
+    FUNCTION_TABLE = {}
 
     def call_function(self, function_name, resolved_args):
         try:
             spec = self.FUNCTION_TABLE[function_name]
         except KeyError:
             raise exceptions.UnknownFunctionError(
-                "Unknown function: %s()" % function_name)
+                "Unknown function: %s()" % function_name
+            )
         function = spec['function']
         signature = spec['signature']
         self._validate_arguments(resolved_args, signature, function_name)
@@ -84,18 +87,21 @@ class Functions(metaclass=FunctionRegistry):
         if signature and signature[-1].get('variadic'):
             if len(args) < len(signature):
                 raise exceptions.VariadictArityError(
-                    len(signature), len(args), function_name)
+                    len(signature), len(args), function_name
+                )
         elif len(args) != len(signature):
             raise exceptions.ArityError(
-                len(signature), len(args), function_name)
+                len(signature), len(args), function_name
+            )
         return self._type_check(args, signature, function_name)
 
     def _type_check(self, actual, signature, function_name):
         for i in range(len(signature)):
             allowed_types = signature[i]['types']
             if allowed_types:
-                self._type_check_single(actual[i], allowed_types,
-                                        function_name)
+                self._type_check_single(
+                    actual[i], allowed_types, function_name
+                )
 
     def _type_check_single(self, current, types, function_name):
         # Type checking involves checking the top level type,
@@ -109,16 +115,20 @@ class Functions(metaclass=FunctionRegistry):
         actual_typename = type(current).__name__
         if actual_typename not in allowed_types:
             raise exceptions.JMESPathTypeError(
-                function_name, current,
-                self._convert_to_jmespath_type(actual_typename), types)
+                function_name,
+                current,
+                self._convert_to_jmespath_type(actual_typename),
+                types,
+            )
         # If we're dealing with a list type, we can have
         # additional restrictions on the type of the list
         # elements (for example a function can require a
         # list of numbers or a list of strings).
         # Arrays are the only types that can have subtypes.
         if allowed_subtypes:
-            self._subtype_check(current, allowed_subtypes,
-                                types, function_name)
+            self._subtype_check(
+                current, allowed_subtypes, types, function_name
+            )
 
     def _get_allowed_pytypes(self, types):
         allowed_types = []
@@ -142,7 +152,8 @@ class Functions(metaclass=FunctionRegistry):
                 actual_typename = type(element).__name__
                 if actual_typename not in allowed_subtypes:
                     raise exceptions.JMESPathTypeError(
-                        function_name, element, actual_typename, types)
+                        function_name, element, actual_typename, types
+                    )
         elif len(allowed_subtypes) > 1 and current:
             # Dynamic type validation.  Based on the first
             # type we see, we validate that the remaining types
@@ -154,12 +165,14 @@ class Functions(metaclass=FunctionRegistry):
                     break
             else:
                 raise exceptions.JMESPathTypeError(
-                    function_name, current[0], first, types)
+                    function_name, current[0], first, types
+                )
             for element in current:
                 actual_typename = type(element).__name__
                 if actual_typename not in allowed:
                     raise exceptions.JMESPathTypeError(
-                        function_name, element, actual_typename, types)
+                        function_name, element, actual_typename, types
+                    )
 
     @signature({'types': ['number']})
     def _func_abs(self, arg):
@@ -190,8 +203,7 @@ class Functions(metaclass=FunctionRegistry):
         if isinstance(arg, STRING_TYPE):
             return arg
         else:
-            return json.dumps(arg, separators=(',', ':'),
-                              default=str)
+            return json.dumps(arg, separators=(',', ':'), default=str)
 
     @signature({'types': []})
     def _func_to_number(self, arg):
@@ -317,20 +329,18 @@ class Functions(metaclass=FunctionRegistry):
         # that validates that type, which requires that remaining array
         # elements resolve to the same type as the first element.
         required_type = self._convert_to_jmespath_type(
-            type(expref.visit(expref.expression, array[0])).__name__)
+            type(expref.visit(expref.expression, array[0])).__name__
+        )
         if required_type not in ['number', 'string']:
             raise exceptions.JMESPathTypeError(
-                'sort_by', array[0], required_type, ['string', 'number'])
-        keyfunc = self._create_key_func(expref,
-                                        [required_type],
-                                        'sort_by')
+                'sort_by', array[0], required_type, ['string', 'number']
+            )
+        keyfunc = self._create_key_func(expref, [required_type], 'sort_by')
         return list(sorted(array, key=keyfunc))
 
     @signature({'types': ['array']}, {'types': ['expref']})
     def _func_min_by(self, array, expref):
-        keyfunc = self._create_key_func(expref,
-                                        ['number', 'string'],
-                                        'min_by')
+        keyfunc = self._create_key_func(expref, ['number', 'string'], 'min_by')
         if array:
             return min(array, key=keyfunc)
         else:
@@ -338,9 +348,7 @@ class Functions(metaclass=FunctionRegistry):
 
     @signature({'types': ['array']}, {'types': ['expref']})
     def _func_max_by(self, array, expref):
-        keyfunc = self._create_key_func(expref,
-                                        ['number', 'string'],
-                                        'max_by')
+        keyfunc = self._create_key_func(expref, ['number', 'string'], 'max_by')
         if array:
             return max(array, key=keyfunc)
         else:
@@ -354,8 +362,10 @@ class Functions(metaclass=FunctionRegistry):
             # allowed_types is in term of jmespath types, not python types.
             if jmespath_type not in allowed_types:
                 raise exceptions.JMESPathTypeError(
-                    function_name, result, jmespath_type, allowed_types)
+                    function_name, result, jmespath_type, allowed_types
+                )
             return result
+
         return keyfunc
 
     def _convert_to_jmespath_type(self, pyobject):

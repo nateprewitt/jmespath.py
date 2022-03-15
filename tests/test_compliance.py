@@ -1,12 +1,10 @@
 import os
 from pprint import pformat
-from tests import OrderedDict
-from tests import json
 
 import pytest
 
 from jmespath.visitor import Options
-
+from tests import OrderedDict, json
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 COMPLIANCE_DIR = os.path.join(TEST_DIR, 'compliance')
@@ -24,11 +22,19 @@ def _compliance_tests(requested_test_type):
                 # test suite, so we only care about 'result' and
                 # 'error' test_types.
                 if test_type == 'result' and test_type == requested_test_type:
-                    yield (given, t['expression'],
-                           t['result'], os.path.basename(full_path))
+                    yield (
+                        given,
+                        t['expression'],
+                        t['result'],
+                        os.path.basename(full_path),
+                    )
                 elif test_type == 'error' and test_type == requested_test_type:
-                    yield (given, t['expression'],
-                           t['error'], os.path.basename(full_path))
+                    yield (
+                        given,
+                        t['expression'],
+                        t['error'],
+                        os.path.basename(full_path),
+                    )
 
 
 def _walk_files():
@@ -64,37 +70,50 @@ def load_cases(full_path):
 
 
 @pytest.mark.parametrize(
-    'given, expression, expected, filename',
-    _compliance_tests('result')
+    'given, expression, expected, filename', _compliance_tests('result')
 )
 def test_expression(given, expression, expected, filename):
     import jmespath.parser
+
     try:
         parsed = jmespath.compile(expression)
     except ValueError as e:
         raise AssertionError(
-            'jmespath expression failed to compile: "%s", error: %s"' %
-            (expression, e))
+            'jmespath expression failed to compile: "%s", error: %s"'
+            % (expression, e)
+        )
     actual = parsed.search(given, options=OPTIONS)
     expected_repr = json.dumps(expected, indent=4)
     actual_repr = json.dumps(actual, indent=4)
-    error_msg = ("\n\n  (%s) The expression '%s' was suppose to give:\n%s\n"
-                 "Instead it matched:\n%s\nparsed as:\n%s\ngiven:\n%s" % (
-                     filename, expression, expected_repr,
-                     actual_repr, pformat(parsed.parsed),
-                     json.dumps(given, indent=4)))
+    error_msg = (
+        "\n\n  (%s) The expression '%s' was suppose to give:\n%s\n"
+        "Instead it matched:\n%s\nparsed as:\n%s\ngiven:\n%s"
+        % (
+            filename,
+            expression,
+            expected_repr,
+            actual_repr,
+            pformat(parsed.parsed),
+            json.dumps(given, indent=4),
+        )
+    )
     error_msg = error_msg.replace(r'\n', '\n')
     assert actual == expected, error_msg
 
 
 @pytest.mark.parametrize(
-    'given, expression, error, filename',
-    _compliance_tests('error')
+    'given, expression, error, filename', _compliance_tests('error')
 )
 def test_error_expression(given, expression, error, filename):
     import jmespath.parser
-    if error not in ('syntax', 'invalid-type',
-                     'unknown-function', 'invalid-arity', 'invalid-value'):
+
+    if error not in (
+        'syntax',
+        'invalid-type',
+        'unknown-function',
+        'invalid-arity',
+        'invalid-value',
+    ):
         raise RuntimeError("Unknown error type '%s'" % error)
     try:
         parsed = jmespath.compile(expression)
@@ -104,14 +123,18 @@ def test_error_expression(given, expression, error, filename):
         pass
     except Exception as e:
         # Failure because an unexpected exception was raised.
-        error_msg = ("\n\n  (%s) The expression '%s' was suppose to be a "
-                     "syntax error, but it raised an unexpected error:\n\n%s" % (
-                         filename, expression, e))
+        error_msg = (
+            "\n\n  (%s) The expression '%s' was suppose to be a "
+            "syntax error, but it raised an unexpected error:\n\n%s"
+            % (filename, expression, e)
+        )
         error_msg = error_msg.replace(r'\n', '\n')
         raise AssertionError(error_msg)
     else:
-        error_msg = ("\n\n  (%s) The expression '%s' was suppose to be a "
-                     "syntax error, but it successfully parsed as:\n\n%s" % (
-                         filename, expression, pformat(parsed.parsed)))
+        error_msg = (
+            "\n\n  (%s) The expression '%s' was suppose to be a "
+            "syntax error, but it successfully parsed as:\n\n%s"
+            % (filename, expression, pformat(parsed.parsed))
+        )
         error_msg = error_msg.replace(r'\n', '\n')
         raise AssertionError(error_msg)

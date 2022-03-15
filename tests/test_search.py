@@ -1,9 +1,9 @@
-import sys
 import decimal
-from tests import unittest, OrderedDict
+import sys
 
 import jmespath
 import jmespath.functions
+from tests import OrderedDict, unittest
 
 
 class TestSearchOptions(unittest.TestCase):
@@ -11,39 +11,34 @@ class TestSearchOptions(unittest.TestCase):
         result = jmespath.search(
             '{a: a, b: b, c: c}.*',
             {'c': 'c', 'b': 'b', 'a': 'a', 'd': 'd'},
-            options=jmespath.Options(dict_cls=OrderedDict))
+            options=jmespath.Options(dict_cls=OrderedDict),
+        )
         self.assertEqual(result, ['a', 'b', 'c'])
 
     def test_can_provide_custom_functions(self):
         class CustomFunctions(jmespath.functions.Functions):
             @jmespath.functions.signature(
-                {'types': ['number']},
-                {'types': ['number']})
+                {'types': ['number']}, {'types': ['number']}
+            )
             def _func_custom_add(self, x, y):
                 return x + y
 
             @jmespath.functions.signature(
-                {'types': ['number']},
-                {'types': ['number']})
+                {'types': ['number']}, {'types': ['number']}
+            )
             def _func_my_subtract(self, x, y):
                 return x - y
 
-
         options = jmespath.Options(custom_functions=CustomFunctions())
         self.assertEqual(
-            jmespath.search('custom_add(`1`, `2`)', {}, options=options),
-            3
+            jmespath.search('custom_add(`1`, `2`)', {}, options=options), 3
         )
         self.assertEqual(
-            jmespath.search('my_subtract(`10`, `3`)', {}, options=options),
-            7
+            jmespath.search('my_subtract(`10`, `3`)', {}, options=options), 7
         )
         # Should still be able to use the original functions without
         # any interference from the CustomFunctions class.
-        self.assertEqual(
-            jmespath.search('length(`[1, 2]`)', {}), 2
-        )
-
+        self.assertEqual(jmespath.search('length(`[1, 2]`)', {}), 2)
 
 
 class TestPythonSpecificCases(unittest.TestCase):
@@ -55,10 +50,12 @@ class TestPythonSpecificCases(unittest.TestCase):
     @unittest.skipIf(not hasattr(sys, 'maxint'), 'Test requires long() type')
     def test_can_handle_long_ints(self):
         result = sys.maxint + 1
-        self.assertEqual(jmespath.search('[?a >= `1`].a', [{'a': result}]),
-                         [result])
+        self.assertEqual(
+            jmespath.search('[?a >= `1`].a', [{'a': result}]), [result]
+        )
 
     def test_can_handle_decimals_as_numeric_type(self):
         result = decimal.Decimal('3')
-        self.assertEqual(jmespath.search('[?a >= `1`].a', [{'a': result}]),
-                         [result])
+        self.assertEqual(
+            jmespath.search('[?a >= `1`].a', [{'a': result}]), [result]
+        )

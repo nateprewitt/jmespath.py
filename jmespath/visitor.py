@@ -1,8 +1,8 @@
 import operator
+from numbers import Number
 
 from jmespath import functions
 from jmespath.compat import string_type
-from numbers import Number
 
 
 def _equals(x, y):
@@ -56,8 +56,9 @@ def _is_actual_number(x):
     return isinstance(x, Number)
 
 
-class Options(object):
+class Options:
     """Options to control how a JMESPath function is evaluated."""
+
     def __init__(self, dict_cls=None, custom_functions=None):
         #: The class to use when creating a dict.  The interpreter
         #  may create dictionaries during the evaluation of a JMESPath
@@ -71,7 +72,7 @@ class Options(object):
         self.custom_functions = custom_functions
 
 
-class _Expression(object):
+class _Expression:
     def __init__(self, expression, interpreter):
         self.expression = expression
         self.interpreter = interpreter
@@ -80,7 +81,7 @@ class _Expression(object):
         return self.interpreter.visit(node, *args, **kwargs)
 
 
-class Visitor(object):
+class Visitor:
     def __init__(self):
         self._method_cache = {}
 
@@ -89,7 +90,8 @@ class Visitor(object):
         method = self._method_cache.get(node_type)
         if method is None:
             method = getattr(
-                self, 'visit_%s' % node['type'], self.default_visit)
+                self, 'visit_%s' % node['type'], self.default_visit
+            )
             self._method_cache[node_type] = method
         return method(node, *args, **kwargs)
 
@@ -104,13 +106,13 @@ class TreeInterpreter(Visitor):
         'lt': operator.lt,
         'gt': operator.gt,
         'lte': operator.le,
-        'gte': operator.ge
+        'gte': operator.ge,
     }
     _EQUALITY_OPS = ['eq', 'ne']
     MAP_TYPE = dict
 
     def __init__(self, options=None):
-        super(TreeInterpreter, self).__init__()
+        super().__init__()
         self._dict_cls = self.MAP_TYPE
         if options is None:
             options = Options()
@@ -143,7 +145,7 @@ class TreeInterpreter(Visitor):
         if node['value'] in self._EQUALITY_OPS:
             return comparator_func(
                 self.visit(node['children'][0], value),
-                self.visit(node['children'][1], value)
+                self.visit(node['children'][1], value),
             )
         else:
             # Ordering operators are only valid for numbers.
@@ -152,8 +154,7 @@ class TreeInterpreter(Visitor):
             left = self.visit(node['children'][0], value)
             right = self.visit(node['children'][1], value)
             num_types = (int, float)
-            if not (_is_comparable(left) and
-                    _is_comparable(right)):
+            if not (_is_comparable(left) and _is_comparable(right)):
                 return None
             return comparator_func(left, right)
 
@@ -297,8 +298,13 @@ class TreeInterpreter(Visitor):
         # This looks weird, but we're explicitly using equality checks
         # because the truth/false values are different between
         # python and jmespath.
-        return (value == '' or value == [] or value == {} or value is None or
-                value is False)
+        return (
+            value == ''
+            or value == []
+            or value == {}
+            or value is None
+            or value is False
+        )
 
     def _is_true(self, value):
         return not self._is_false(value)
@@ -306,23 +312,26 @@ class TreeInterpreter(Visitor):
 
 class GraphvizVisitor(Visitor):
     def __init__(self):
-        super(GraphvizVisitor, self).__init__()
+        super().__init__()
         self._lines = []
         self._count = 1
 
     def visit(self, node, *args, **kwargs):
         self._lines.append('digraph AST {')
-        current = '%s%s' % (node['type'], self._count)
+        current = '{}{}'.format(node['type'], self._count)
         self._count += 1
         self._visit(node, current)
         self._lines.append('}')
         return '\n'.join(self._lines)
 
     def _visit(self, node, current):
-        self._lines.append('%s [label="%s(%s)"]' % (
-            current, node['type'], node.get('value', '')))
+        self._lines.append(
+            '{} [label="{}({})"]'.format(
+                current, node['type'], node.get('value', '')
+            )
+        )
         for child in node.get('children', []):
-            child_name = '%s%s' % (child['type'], self._count)
+            child_name = '{}{}'.format(child['type'], self._count)
             self._count += 1
-            self._lines.append('  %s -> %s' % (current, child_name))
+            self._lines.append(f'  {current} -> {child_name}')
             self._visit(child, child_name)

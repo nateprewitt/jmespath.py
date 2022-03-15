@@ -1,14 +1,13 @@
 #!/usr/bin/env python
-from tests import unittest
-from datetime import datetime, timedelta
 import json
+from datetime import datetime, timedelta
 
 import jmespath
 from jmespath import exceptions
+from tests import unittest
 
 
 class TestFunctions(unittest.TestCase):
-
     def test_can_max_datetimes(self):
         # This is python specific behavior, but JMESPath does not specify what
         # you should do with language specific types.  We're going to add the
@@ -27,8 +26,9 @@ class TestFunctions(unittest.TestCase):
         # 2. Mention it's an invalid type
         self.assertIn('invalid type for value: 2', str(exception))
         # 3. Mention the valid types:
-        self.assertIn("expected one of: ['string', 'array', 'object']",
-                      str(exception))
+        self.assertIn(
+            "expected one of: ['string', 'array', 'object']", str(exception)
+        )
         # 4. Mention the actual type.
         self.assertIn('received: "number"', str(exception))
 
@@ -38,7 +38,8 @@ class TestFunctions(unittest.TestCase):
         exception = e.exception
         self.assertEqual(
             str(exception),
-            'Expected 1 argument for function length(), received 2')
+            'Expected 1 argument for function length(), received 2',
+        )
 
     def test_error_message_is_pluralized(self):
         with self.assertRaises(exceptions.ArityError) as e:
@@ -46,7 +47,8 @@ class TestFunctions(unittest.TestCase):
         exception = e.exception
         self.assertEqual(
             str(exception),
-            'Expected 2 arguments for function sort_by(), received 1')
+            'Expected 2 arguments for function sort_by(), received 1',
+        )
 
     def test_variadic_is_pluralized(self):
         with self.assertRaises(exceptions.VariadictArityError) as e:
@@ -54,4 +56,5 @@ class TestFunctions(unittest.TestCase):
         exception = e.exception
         self.assertEqual(
             str(exception),
-            'Expected at least 1 argument for function not_null(), received 0')
+            'Expected at least 1 argument for function not_null(), received 0',
+        )

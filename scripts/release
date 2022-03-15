@@ -29,18 +29,27 @@ def run(command):
     print("Running:", command)
     check_call(command, shell=True)
 
+
 def verify_starting_state():
     must_be_on_develop_branch()
     no_outstanding_changes()
 
+
 def must_be_on_develop_branch():
-    output = check_output('git rev-parse --abbrev-ref HEAD',
-                          shell=True).strip().decode('utf8')
-    assert output == 'develop', 'Must be on the develop branch, not %r' % output
+    output = (
+        check_output('git rev-parse --abbrev-ref HEAD', shell=True)
+        .strip()
+        .decode('utf8')
+    )
+    assert output == 'develop', (
+        'Must be on the develop branch, not %r' % output
+    )
+
 
 def no_outstanding_changes():
-    output = check_output(
-        'git status --short', shell=True).strip().decode('utf8')
+    output = (
+        check_output('git status --short', shell=True).strip().decode('utf8')
+    )
     if output:
         raise AssertionError("Can't have any pending changes:\n%s" % output)
 
@@ -56,13 +65,14 @@ def bump_version(version):
 # It might be nice to auto populate the merge/tag messages,
 # right now it will pop up an editor.
 
+
 def merge_to_master(version):
     run('git checkout master')
     run('git merge --no-ff release-%s' % version)
 
 
 def tag_release(version):
-    run('git tag -s -m "Tagging %s release" %s' % (version, version))
+    run(f'git tag -s -m "Tagging {version} release" {version}')
 
 
 def merge_to_develop(version):
@@ -88,8 +98,10 @@ def main():
     tag_release(args.release_version)
     merge_to_develop(args.release_version)
     push_changes()
-    print('Completed, run "python setup.py sdist upload" to '
-          "upload changes to pypi.")
+    print(
+        'Completed, run "python setup.py sdist upload" to '
+        "upload changes to pypi."
+    )
 
 
 if __name__ == '__main__':

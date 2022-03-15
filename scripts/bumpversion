@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-import os
 import argparse
+import os
 from subprocess import check_call
 
 try:
@@ -12,9 +12,7 @@ except NameError:
 def open_file(filename, mode='r'):
     # relative open a file from the root project dir.
     d = os.path.dirname
-    full_path = os.path.join(
-        d(d(os.path.abspath(__file__))),
-        filename)
+    full_path = os.path.join(d(d(os.path.abspath(__file__))), filename)
     return open(full_path, mode)
 
 

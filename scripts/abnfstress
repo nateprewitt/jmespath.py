@@ -7,14 +7,15 @@ Make sure abnfgen is installed::
 
 """
 import argparse
-import tempfile
 import subprocess
+import tempfile
+
 import jmespath
 from jmespath import exceptions
 
 # Add any additional args you want to control
 # abnfgen.
-#ARGS = ['-y', '10']
+# ARGS = ['-y', '10']
 ARGS = []
 
 
@@ -132,7 +133,9 @@ def stress(args):
             except Exception as e:
                 print(e)
                 print(output)
-                import pdb; pdb.set_trace()
+                import pdb
+
+                pdb.set_trace()
             i += 1
             if i % 1000 == 0:
                 print("num_expressions: %s" % i)
