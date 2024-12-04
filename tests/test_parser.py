@@ -334,6 +334,7 @@ class TestParserCaching(unittest.TestCase):
             p = parser.Parser()
             for expression in expressions:
                 try:
+                    print(expression)
                     p.parse(expression)
                 except Exception as e:
                     errors.append(e)
