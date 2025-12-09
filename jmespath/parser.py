@@ -25,13 +25,15 @@ A few notes on the implementation.
   consuming from the token iterator one token at a time.
 
 """
-import random
+from functools import lru_cache
 
 from jmespath import lexer
 from jmespath.compat import with_repr_method
 from jmespath import ast
 from jmespath import exceptions
 from jmespath import visitor
+
+_MAX_SIZE = 128
 
 
 class Parser(object):
@@ -70,10 +72,6 @@ class Parser(object):
     # The maximum binding power for a token that can stop
     # a projection.
     _PROJECTION_STOP = 10
-    # The _MAX_SIZE most recent expressions are cached in
-    # _CACHE dict.
-    _CACHE = {}
-    _MAX_SIZE = 128
 
     def __init__(self, lookahead=2):
         self.tokenizer = None
@@ -81,14 +79,9 @@ class Parser(object):
         self._buffer_size = lookahead
         self._index = 0
 
+    @lru_cache(_MAX_SIZE)
     def parse(self, expression):
-        cached = self._CACHE.get(expression)
-        if cached is not None:
-            return cached
         parsed_result = self._do_parse(expression)
-        self._CACHE[expression] = parsed_result
-        if len(self._CACHE) > self._MAX_SIZE:
-            self._free_cache_entries()
         return parsed_result
 
     def _do_parse(self, expression):
@@ -488,14 +481,11 @@ class Parser(object):
         raise exceptions.ParseError(
             lex_position, actual_value, actual_type, message)
 
-    def _free_cache_entries(self):
-        for key in random.sample(list(self._CACHE.keys()), int(self._MAX_SIZE / 2)):
-            self._CACHE.pop(key, None)
-
     @classmethod
     def purge(cls):
-        """Clear the expression compilation cache."""
-        cls._CACHE.clear()
+        """Deprecated in favor of Python's `lru_cache`"""
+        # TODO: raise a deprecation warning here
+        pass
 
 
 @with_repr_method

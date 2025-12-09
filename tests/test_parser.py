@@ -302,11 +302,11 @@ class TestParserCaching(unittest.TestCase):
         p = parser.Parser()
         compiled = []
         compiled2 = []
-        for i in range(parser.Parser._MAX_SIZE + 1):
+        for i in range(parser._MAX_SIZE + 1):
             compiled.append(p.parse('foo%s' % i))
         # Rerun the test and half of these entries should be from the
         # cache but they should still be equal to compiled.
-        for i in range(parser.Parser._MAX_SIZE + 1):
+        for i in range(parser._MAX_SIZE + 1):
             compiled2.append(p.parse('foo%s' % i))
         self.assertEqual(len(compiled), len(compiled2))
         self.assertEqual(
